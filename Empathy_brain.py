@@ -6,7 +6,15 @@ import numpy as np
 from dotenv import load_dotenv
 
 load_dotenv()
-API_KEY = os.getenv("GNANI_API_KEY")
+
+# Upar GEMINI_KEYS wali line ko aise likh (taaki agar koi key None ho toh 404 na aaye):
+GEMINI_KEYS = [k.strip() for k in [
+    os.getenv("GEMINI_KEY_1"),
+    os.getenv("GEMINI_KEY_2"),
+    os.getenv("GEMINI_KEY_3"),
+    os.getenv("GEMINI_KEY_4")
+] if k]
+current_key_index = 0
 
 def extract_acoustic_cues(audio_path):
     y, sr = librosa.load(audio_path , sr=16000)
@@ -55,15 +63,9 @@ Respond STRICTLY in this JSON format:
 }
 """
 
-
 def generate_empathetic_reply(user_text, audio_path):
+    global current_key_index
     acoustics = extract_acoustic_cues(audio_path)
-    
-    url = "https://api.vachana.ai/v1/chat/completions"
-    headers = {
-        "Content-Type": "application/json",
-        "X-API-Key-ID": API_KEY
-    }
     
     user_context = f"""
     User Spoken Text: {user_text}
@@ -71,36 +73,53 @@ def generate_empathetic_reply(user_text, audio_path):
     DO_NOT_REPEAT_MEMORY (Forbidden Approaches): {DO_NOT_REPEAT_MEMORY}
     Recent History: {CONVERSATION_HISTORY[-4:]}
     """
-
+    
     payload = {
-        "model": "Evon-30B" , 
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_context}
-
-        ],
-        "temperature": 0.6,
-        "response_format": {"type": "json_object"}
-
-
+        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": [{"parts": [{"text": user_context}]}],
+        "generationConfig": {
+            "temperature": 0.6,
+            "responseMimeType": "application/json"
+        }
     }
 
-    response = requests.post(url, headers=headers, json=payload)
-    print("Evon server ne yeh bheja:", response.json())
-    raw_content = response.json()["choices"][0]["message"]["content"]
-    brain_output = json.loads(raw_content)
+    # Sabse stable aur low-traffic models ki priority list:
+    MODELS_TO_TRY = [
+       "gemini-3.5-flash",
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.8-flash"
+    ]
 
-    if brain_output.get("user_disagreed") and brain_output.get("new_rejected_item"):
-        DO_NOT_REPEAT_MEMORY.append(brain_output["new_rejected_item"])
-
-    CONVERSATION_HISTORY.append({"user": user_text, "ai": brain_output["spoken_reply"]})
-    brain_output["acoustics"] = acoustics
-
-    return brain_output
-
-    
+    for model_name in MODELS_TO_TRY:
+        for attempt in range(len(GEMINI_KEYS)):
+            active_key = GEMINI_KEYS[current_key_index]
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={active_key}"
+            
+            response = requests.post(url, json=payload)
+            
+            if response.status_code == 200:
+                print(f"✅ Success with Model: {model_name} (Key {current_key_index + 1})")
+                raw_content = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+                brain_output = json.loads(raw_content)
+                
+                if brain_output.get("user_disagreed") and brain_output.get("new_rejected_item"):
+                    DO_NOT_REPEAT_MEMORY.append(brain_output["new_rejected_item"])
+                    
+                CONVERSATION_HISTORY.append({"user": user_text, "ai": brain_output["spoken_reply"]})
+                brain_output["acoustics"] = acoustics
+                return brain_output
+            
+            elif response.status_code == 503:
+                print(f"⚠️ {model_name} server busy (503). Trying next model immediately...")
+                break  # Server busy hai toh key badalne se fayda nahi, seedha agla model pakdo!
+            else:
+                print(f"⚠️ Key {current_key_index + 1} limit/error ({response.status_code}). Shifting key...")
+                current_key_index = (current_key_index + 1) % len(GEMINI_KEYS)
+                
+    raise Exception("Saare models aur keys fail ho gayin!")
 if __name__ == "__main__":
     test_text = "यार आज बहुत थकान हो गई है, कुछ समझ नहीं आ रहा।"
     result = generate_empathetic_reply(test_text, "reply.wav")
     print(json.dumps(result, indent=2, ensure_ascii=False))
-    
