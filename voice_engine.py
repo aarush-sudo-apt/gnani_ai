@@ -1,6 +1,10 @@
+import os 
 import requests 
+from dotenv import load_dotenv
 
-API_KEY = "vach_1ytE2CY5X2ERzK0pzUJeJl64djBAE4OerC90JSvfNcDsWqYqQVtR98sndneVRIssXEcEnt1YIhhOfN1z0ZnA6sRquGc5e6qo_e99634421a2dc17edc9fb985ada839d4"
+load_dotenv()
+API_KEY = os.getenv("GNANI_API_KEY")
+print("our API key is loaded or not?->", API_KEY)
 
 def speech_to_text(audio_path):
     url = "https://api.vachana.ai/stt/v3"
@@ -11,6 +15,7 @@ def speech_to_text(audio_path):
         files = {"audio_file": ("input.wav", audio_file, "audio/wav")}
         response = requests.post(url, headers=headers, data=data, files=files)
 
+    #print("STT Status Code:", response.status_code, "| Raw Text:", response.text)
     result = response.json()
     return result["transcript"]
  
