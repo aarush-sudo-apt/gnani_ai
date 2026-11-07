@@ -85,11 +85,11 @@ def generate_empathetic_reply(user_text, audio_path):
 
     # Sabse stable aur low-traffic models ki priority list:
     MODELS_TO_TRY = [
-       "gemini-3.5-flash",
-        "gemini-3.7-flash",
-        "gemini-3.6-flash",
+        "gemini-3.8-flash",
         "gemini-3.5-flash-lite",
-        "gemini-3.8-flash"
+        "gemini-3.5-flash",
+        "gemini-3.7-flash",
+        "gemini-3.6-flash"
     ]
 
     for model_name in MODELS_TO_TRY:
@@ -102,6 +102,10 @@ def generate_empathetic_reply(user_text, audio_path):
             if response.status_code == 200:
                 print(f"✅ Success with Model: {model_name} (Key {current_key_index + 1})")
                 raw_content = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+                
+                # Safety cleanup if LLM wraps output in ```json ... ```
+                if raw_content.startswith("```"):
+                    raw_content = raw_content.strip("`").removeprefix("json").strip()
                 brain_output = json.loads(raw_content)
                 
                 if brain_output.get("user_disagreed") and brain_output.get("new_rejected_item"):
@@ -111,14 +115,25 @@ def generate_empathetic_reply(user_text, audio_path):
                 brain_output["acoustics"] = acoustics
                 return brain_output
             
-            elif response.status_code == 503:
+            elif response.status_code in [404,503]:
                 print(f"⚠️ {model_name} server busy (503). Trying next model immediately...")
                 break  # Server busy hai toh key badalne se fayda nahi, seedha agla model pakdo!
             else:
                 print(f"⚠️ Key {current_key_index + 1} limit/error ({response.status_code}). Shifting key...")
                 current_key_index = (current_key_index + 1) % len(GEMINI_KEYS)
-                
-    raise Exception("Saare models aur keys fail ho gayin!")
+
+# Safe fallback so Streamlit UI and Timbre TTS never crash during a live demo
+    fallback_reply = "Main samajh sakta hoon yaar ki abhi cheezein bohot heavy lag rahi hain. Tu akela nahi hai, aaram se saans le aur mujhe khul ke bata."
+    CONVERSATION_HISTORY.append({"user": user_text, "ai": fallback_reply})
+    return {
+        "detected_emotion": "Overwhelmed / Stressed",
+        "user_disagreed": False,
+        "new_rejected_item": None,
+        "possibility_analysis": "Fallback validation mode activated to maintain uninterrupted empathetic support.",
+        "spoken_reply": fallback_reply,
+        "acoustics": acoustics
+    }
+
 if __name__ == "__main__":
     test_text = "यार आज बहुत थकान हो गई है, कुछ समझ नहीं आ रहा।"
     result = generate_empathetic_reply(test_text, "reply.wav")

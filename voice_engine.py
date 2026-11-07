@@ -9,10 +9,6 @@ load_dotenv()
 API_KEY = os.getenv("GNANI_API_KEY")
 print("our API key is loaded or not?->", API_KEY)
 
-import librosa
-import soundfile as sf
-import time
-
 def speech_to_text(audio_file_path):
     url = "https://api.vachana.ai/stt/v3"
     headers = {
