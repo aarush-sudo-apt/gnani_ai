@@ -1,6 +1,6 @@
 # Sahaara AI (सहारा) — Solution Pitch
 **Tagline:** Multimodal Acoustic-Aware Empathetic Voice Companion with Self-Correcting Negative Memory  
-**Track:** Gnani.ai Voice Challenge 2026[cite: 27]  
+**Track:** Gnani.ai Voice Challenge 2026
 
 ---
 
