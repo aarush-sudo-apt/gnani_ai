@@ -1,8 +1,7 @@
 # Sahaara AI (सहारा) — Solution Pitch
+**Team:** Aarush Aery & Veer Vikram Singh Rana | Amity University Punjab  
 **Tagline:** Multimodal Acoustic-Aware Empathetic Voice Companion with Self-Correcting Negative Memory  
 **Track:** Gnani.ai Voice Challenge 2026
-
----
 
 ### 1. Problem Statement
 Most conversational wellness systems rely exclusively on textual transcripts, ignoring paralinguistic acoustic cues such as vocal tension, exhaustion, and hesitation pauses. Furthermore, conventional conversational agents operate without negative feedback memory; when a distressed user pushes back against an unhelpful suggestion, the assistant frequently doubles down or offers repetitive platitudes, elevating user friction and cognitive fatigue.
